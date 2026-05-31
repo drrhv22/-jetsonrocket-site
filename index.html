@@ -158,6 +158,15 @@
   .reveal{opacity:0;transform:translateY(24px);transition:opacity .8s ease,transform .8s ease}
   .reveal.in{opacity:1;transform:none}
 
+  /* video lightbox (lazy YouTube embed) */
+  .vbox{position:fixed;inset:0;z-index:60;display:none;place-items:center;padding:var(--s5);background:rgba(8,6,30,.84);backdrop-filter:blur(6px)}
+  .vbox.open{display:grid}
+  .vbox-inner{position:relative;width:min(900px,92vw)}
+  .vbox-frame{position:relative;width:100%;aspect-ratio:16/9;border-radius:var(--r);overflow:hidden;background:#000;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .vbox-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .vbox-close{position:absolute;top:-16px;right:-8px;width:44px;height:44px;border-radius:50%;border:0;cursor:pointer;background:var(--amber);color:#241048;font-size:1.3rem;font-family:var(--display);box-shadow:0 8px 20px rgba(0,0,0,.45)}
+  .song[data-yt]{cursor:pointer}
+
   @media(max-width:820px){
     .nav-links{display:none}.menu-btn{display:block}
     .feature-row{grid-template-columns:1fr}
@@ -280,14 +289,14 @@
     <div class="sec-head reveal">
       <span class="eyebrow">Latest Songs</span>
       <h2>Press play &amp; drift away</h2>
-      <p>Fresh lullabies and adventures from the Topo Jemby crew. Tap any to watch on YouTube.</p>
+      <p>Fresh lullabies and adventures from the Topo Jemby crew. Tap any to play — right here. ▶</p>
     </div>
     <div class="song-grid">
-      <!-- TODO: point each song to its specific YouTube video URL when available -->
-      <a class="song glass reveal" href="https://www.youtube.com/@TopoJembyLauRamirez" target="_blank" rel="noopener"><div class="play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></div><h3>Space Cowboy Lullaby</h3><span>🤠 Adventure · with Emjay Jordi</span></a>
-      <a class="song glass reveal" href="https://www.youtube.com/@TopoJembyLauRamirez" target="_blank" rel="noopener"><div class="play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></div><h3>Goodnight Jetson</h3><span>🌙 Bedtime lullaby</span></a>
-      <a class="song glass reveal" href="https://www.youtube.com/@TopoJembyLauRamirez" target="_blank" rel="noopener"><div class="play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></div><h3>Catch a Comet on a String</h3><span>✨ Futuristic nursery bop</span></a>
-      <a class="song glass reveal" href="https://www.youtube.com/@TopoJembyLauRamirez" target="_blank" rel="noopener"><div class="play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></div><h3>Jetson Rocket 1·2·3</h3><span>🚀 Counting space lullaby</span></a>
+      <!-- data-yt = YouTube video id → clicking plays it in the on-site lightbox. (#3 "Catch a Comet" is a Short — embeds fine.) -->
+      <a class="song glass reveal" data-yt="fHn-A2_WRts" href="https://www.youtube.com/@TopoJembyLauRamirez" target="_blank" rel="noopener"><div class="play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></div><h3>Space Cowboy Lullaby</h3><span>🤠 Adventure · with Emjay Jordi</span></a>
+      <a class="song glass reveal" data-yt="6MeMW3oKBwE" href="https://www.youtube.com/@TopoJembyLauRamirez" target="_blank" rel="noopener"><div class="play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></div><h3>Goodnight Jetson</h3><span>🌙 Bedtime lullaby</span></a>
+      <a class="song glass reveal" data-yt="DHZ7rjQw6Rw" href="https://www.youtube.com/@TopoJembyLauRamirez" target="_blank" rel="noopener"><div class="play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></div><h3>Catch a Comet on a String</h3><span>✨ Futuristic nursery bop</span></a>
+      <a class="song glass reveal" data-yt="zXj0Eaj1vXo" href="https://www.youtube.com/@TopoJembyLauRamirez" target="_blank" rel="noopener"><div class="play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></div><h3>Jetson Rocket 1·2·3</h3><span>🚀 Counting space lullaby</span></a>
     </div>
   </div>
 </section>
@@ -340,6 +349,14 @@
 </footer>
 </div>
 
+<!-- video lightbox -->
+<div class="vbox" id="vbox" role="dialog" aria-modal="true" aria-label="Video player" aria-hidden="true">
+  <div class="vbox-inner">
+    <button class="vbox-close" id="vboxClose" aria-label="Close video">✕</button>
+    <div class="vbox-frame" id="vboxFrame"></div>
+  </div>
+</div>
+
 <script>
   // gentle twinkling starfield (Phase 3: lower density)
   (function(){
@@ -374,6 +391,28 @@
   (function(){var b=document.getElementById('menuBtn'),n=document.getElementById('navlinks');
     b.addEventListener('click',function(){n.classList.toggle('open');});
     n.addEventListener('click',function(e){if(e.target.tagName==='A')n.classList.remove('open');});
+  })();
+
+  // youtube embed lightbox (lazy, privacy-friendly)
+  (function(){
+    var box=document.getElementById('vbox'),frame=document.getElementById('vboxFrame'),
+        closeBtn=document.getElementById('vboxClose'),last=null;
+    function open(id){
+      last=document.activeElement;
+      frame.innerHTML='<iframe src="https://www.youtube-nocookie.com/embed/'+id+'?autoplay=1&rel=0&modestbranding=1" title="YouTube video player" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>';
+      box.classList.add('open');box.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';closeBtn.focus();
+    }
+    function close(){box.classList.remove('open');box.setAttribute('aria-hidden','true');frame.innerHTML='';document.body.style.overflow='';if(last)last.focus();}
+    document.querySelectorAll('.song[data-yt]').forEach(function(a){
+      a.addEventListener('click',function(e){
+        var id=a.getAttribute('data-yt');
+        if(!id||id.indexOf('VIDEO_ID')===0)return;   // no real id yet → fall back to channel href
+        e.preventDefault();open(id);
+      });
+    });
+    closeBtn.addEventListener('click',close);
+    box.addEventListener('click',function(e){if(e.target===box)close();});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape'&&box.classList.contains('open'))close();});
   })();
 </script>
 </body>
